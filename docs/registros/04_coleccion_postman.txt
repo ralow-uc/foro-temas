@@ -1,0 +1,42 @@
+===========================================================================
+ Registro: ejecucion completa de la coleccion de Postman contra Oracle
+ Fecha: 2026-10-29 13:21:59 -03
+===========================================================================
+
+Las 25 peticiones de postman/foro-online.postman_collection.json se
+ejecutaron en orden contra los DOS microservicios -cada uno arrancado
+desde su propio repositorio- conectados al esquema FORO de Oracle
+Autonomous Database, comprobando el codigo HTTP que cada peticion
+declara en sus propios tests.
+
+En este equipo no esta instalado newman, asi que la ejecucion se hizo con
+un corredor propio que lee la coleccion, sustituye las variables, lanza
+cada peticion y compara el codigo recibido con el declarado.
+
+  OK     00 - Estado de foro-usuarios  -> HTTP 200
+  OK     01 - Estado de foro-temas  -> HTTP 200
+  OK     02 - GET categorias (publico)  -> HTTP 200
+  OK     03 - GET temas paginados (publico)  -> HTTP 200
+  OK     04 - GET temas por texto  -> HTTP 200
+  OK     05 - GET temas por autor y categoria  -> HTTP 200
+  OK     06 - GET detalle de un tema (publico)  -> HTTP 200
+  OK     07 - POST registro de un usuario nuevo  -> HTTP 201
+  OK     08 - POST login del usuario nuevo  -> HTTP 200
+  OK     09 - POST publicar un tema  -> HTTP 201
+  OK     10 - POST comentar el tema  -> HTTP 201
+  OK     11 - GET el tema recien creado  -> HTTP 200
+  OK     12 - PUT editar el propio tema  -> HTTP 200
+  OK     13 - PUT editar un tema ajeno (403)  -> HTTP 403
+  OK     14 - GET usuarios con rol USUARIO (403)  -> HTTP 403
+  OK     15 - GET usuarios sin token (401)  -> HTTP 401
+  OK     16 - POST login de admin  -> HTTP 200
+  OK     17 - GET usuarios con rol ADMIN (200)  -> HTTP 200
+  OK     18 - PUT promover al usuario nuevo (ADMIN)  -> HTTP 200
+  OK     19 - DELETE el tema con ADMIN (204)  -> HTTP 204
+  OK     20 - GET el tema borrado (404)  -> HTTP 404
+  OK     21 - POST login de una cuenta de baja (401)  -> HTTP 401
+  OK     22 - POST tema con token manipulado (401)  -> HTTP 401
+  OK     23 - POST tema con datos invalidos (400)  -> HTTP 400
+  OK     24 - DELETE la cuenta de prueba (ADMIN)  -> HTTP 204
+
+peticiones: 25 | fallos: 0

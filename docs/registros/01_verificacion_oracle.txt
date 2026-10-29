@@ -1,0 +1,157 @@
+===================================================================
+ Verificacion de punta a punta contra Oracle Autonomous Database
+ Fecha: 2026-10-29 13:21:54 -03
+ ms-usuarios: http://localhost:8081   |   ms-foro: http://localhost:8082
+===================================================================
+
+--- 1) Estado de los dos microservicios ---
+{
+  "estado" : "OK",
+  "servicio" : "foro-usuarios",
+  "baseDeDatos" : {
+    "conectada" : true,
+    "motor" : "Oracle Oracle AI Database 26ai Enterprise Edition Release 23.26.4.1.0 - Production\nVersion 23.26.4.1.0"
+  }
+}{
+  "estado" : "OK",
+  "servicio" : "foro-temas",
+  "baseDeDatos" : {
+    "conectada" : true,
+    "motor" : "Oracle Oracle AI Database 26ai Enterprise Edition Release 23.26.4.1.0 - Production\nVersion 23.26.4.1.0"
+  }
+}
+--- 2) GET /api/categorias (publico): las 6 categorias con su conteo de temas ---
+    2  Big cubes                1 temas   /big-cubes
+    5  Competencias WCA         2 temas   /competencias-wca
+    1  Cubo 3x3                 1 temas   /cubo-3x3
+    6  Hardware y mods          2 temas   /hardware-y-mods
+    3  Métodos y algoritmos     2 temas   /metodos-y-algoritmos
+    4  Puzzles no cúbicos       1 temas   /puzzles-no-cubicos
+
+--- 3) GET /api/temas (publico, paginado) ---
+  pagina 0 de 3  |  total 9 temas
+  [Hardware y mods] Lubricantes: Angstrom contra DNM-37  -- yiheng (1 comentarios)
+  [Hardware y mods] Reseña del GAN 14 con MagLev  -- feliks (2 comentarios)
+  [Competencias WCA] Las tres reglas que más descalifican  -- moderadora (0 comentarios)
+
+--- 4) GET /api/temas?texto=cfop (busqueda por texto, sin distinguir mayusculas) ---
+  encontrados: 1
+  - ¿CFOP o Roux para bajar de 15?
+
+--- 5) GET /api/temas?autor=feliks&texto=gan (dos filtros combinados) ---
+  encontrados: 1
+  - Reseña del GAN 14 con MagLev (feliks)
+
+--- 6) POST /api/usuarios: registro de una cuenta nueva (publico) ---
+{
+  "id" : 7,
+  "nombreUsuario" : "cubero132154",
+  "correo" : "cubero132154@foro.cl",
+  "activo" : true,
+  "fechaRegistro" : "2026-10-29T13:21:54.977352",
+  "roles" : [ "USUARIO" ]
+}HTTP 201  (201 esperado)
+
+--- 7) POST /api/auth/login: inicio de sesion del usuario nuevo ---
+  usuario : cubero132154
+  roles   : ['USUARIO']
+  tipo    : Bearer
+  expira  : 2026-10-29T15:21:55.116269
+  token   : eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJjdWJlcm8xMzIx... (220 caracteres)
+
+--- 8) POST /api/temas con el token: publicar un tema ---
+{
+  "id" : 11,
+  "categoria" : {
+    "id" : 2,
+    "nombre" : "Big cubes",
+    "slug" : "big-cubes"
+  },
+  "autorId" : 7,
+  "autorNombre" : "cubero132154",
+  "titulo" : "Mi primer sub-30 con el metodo de principiantes",
+  "contenido" : "Partí en 2 minutos y hoy bajé de 30 segundos sin aprender F2L todavía.",
+  "fechaCreacion" : "2026-10-29T13:21:58.343552",
+  "cerrado" : false,
+  "cantidadDeComentarios" : 0
+}HTTP 201  (201 esperado)
+
+--- 9) POST /api/temas/11/comentarios: comentar el tema ---
+{
+  "id" : 15,
+  "temaId" : 11,
+  "autorId" : 7,
+  "autorNombre" : "cubero132154",
+  "contenido" : "Agrego que los algoritmos de principiantes dan para sub-25 sin problema.",
+  "fechaCreacion" : "2026-10-29T13:21:58.439125"
+}
+HTTP 201
+
+--- 10) GET /api/temas/11 (publico): detalle con sus comentarios ---
+  titulo : Mi primer sub-30 con el metodo de principiantes
+  autor  : cubero132154 (id 7)
+  cerrado: False
+  comentario de cubero132154: Agrego que los algoritmos de principiantes dan para sub-25 sin problema.
+
+--- 11) PUT /api/temas/11: el autor edita su propio tema ---
+HTTP 200  (200 esperado: es su tema)
+
+--- 12) PRIVILEGIOS: el mismo usuario intenta editar un tema ajeno ---
+{
+  "type" : "about:blank",
+  "title" : "Operacion no permitida",
+  "status" : 403,
+  "detail" : "Solo el autor o un administrador puede editar este tema",
+  "instance" : "/api/temas/8"
+}
+HTTP 403  (403 esperado: no es el autor ni ADMIN)
+
+--- 13) PRIVILEGIOS: rol USUARIO intenta listar todos los usuarios ---
+HTTP 403  (403 esperado: operacion de ADMIN)
+
+--- 14) PRIVILEGIOS: el mismo listado con un token de ADMIN ---
+    7  cubero132154     ['USUARIO']                cuenta activa
+    1  admin            ['ADMIN']                  cuenta activa
+    2  moderadora       ['MODERADOR', 'USUARIO']   cuenta activa
+    3  feliks           ['USUARIO']                cuenta activa
+    4  yiheng           ['USUARIO']                cuenta activa
+    5  tymon            ['USUARIO']                cuenta de baja
+
+--- 15) PRIVILEGIOS: el ADMIN borra el tema del otro usuario ---
+HTTP 204  (204 esperado: un ADMIN puede moderar)
+HTTP 404  (404 esperado: el tema ya no existe)
+
+--- 16) SEGURIDAD: una cuenta dada de baja no puede iniciar sesion ---
+{
+  "type" : "about:blank",
+  "title" : "Credenciales invalidas",
+  "status" : 401,
+  "detail" : "Nombre de usuario o contrasena incorrectos",
+  "instance" : "/api/auth/login"
+}
+HTTP 401  (401 esperado)
+
+--- 17) SEGURIDAD: token manipulado ---
+HTTP 401  (401 esperado: la firma no valida)
+
+--- 18) VALIDACION: datos invalidos ---
+{
+  "type" : "about:blank",
+  "title" : "Datos invalidos",
+  "status" : 400,
+  "detail" : "Revisa los campos indicados en 'errores'",
+  "instance" : "/api/temas",
+  "errores" : {
+    "contenido" : "El contenido debe tener entre 10 y 4000 caracteres",
+    "titulo" : "El titulo debe tener entre 5 y 200 caracteres"
+  }
+}
+HTTP 400  (400 esperado)
+
+--- 19) DELETE /api/usuarios/7: el ADMIN elimina la cuenta de prueba ---
+HTTP 204  (204 esperado)
+
+===================================================================
+ Los 4 verbos REST (GET, POST, PUT, DELETE) quedaron ejercitados en
+ los dos microservicios, contra el esquema FORO de Oracle.
+===================================================================

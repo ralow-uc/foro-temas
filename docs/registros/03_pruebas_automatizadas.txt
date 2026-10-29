@@ -1,0 +1,17 @@
+===========================================================================
+ Resultado de las pruebas automatizadas  (./scripts/test.sh)
+ Microservicio foro-temas
+===========================================================================
+
+Corren sobre H2 en modo Oracle, sin tocar la base real ni necesitar red.
+
+[INFO] Running com.foro.temas.repository.TemaRepositoryTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.905 s -- in com.foro.temas.repository.TemaRepositoryTest
+[INFO] Running com.foro.temas.ForoTemasApplicationTests
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.732 s -- in com.foro.temas.ForoTemasApplicationTests
+[INFO] Running com.foro.temas.controller.ForoControllerTest
+[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.656 s -- in com.foro.temas.controller.ForoControllerTest
+[INFO] Running com.foro.temas.service.ForoServiceImplTest
+[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.150 s -- in com.foro.temas.service.ForoServiceImplTest
+[INFO] Tests run: 43, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS

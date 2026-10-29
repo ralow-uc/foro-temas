@@ -1,0 +1,103 @@
+===================================================================
+ Registro: estado del esquema FORO en Oracle Autonomous Database
+ Microservicio foro-temas
+ Fecha: 2026-10-29 13:22:23 -03
+===================================================================
+
+Base de datos
+-------------
+  Nombre BD   : FULLSTACK-3 / FULLSTACK3
+  Tipo        : Oracle Autonomous Database (Always Free)
+  Version     : Oracle AI Database 26ai Enterprise Edition 23.26.4.1.0
+  Region      : Chile Central (Santiago), sa-santiago-1
+  Esquema     : FORO (creado con scripts/00_crear_esquema_foro.sql)
+  Servicio TNS: fullstack3_tp
+  mTLS        : requerido (conexion con Wallet)
+
+Objetos de ESTE microservicio, creados por scripts/01_crear_tablas.sql
+---------------------------------------------------------------------
+  Tablas     : CATEGORIA, TEMA, COMENTARIO
+  Secuencias : CATEGORIA_SEQ, TEMA_SEQ, COMENTARIO_SEQ
+
+  Las tablas del otro microservicio del foro conviven en el mismo
+  esquema y las crea su propio script. No hay claves foraneas entre
+  los dos grupos de tablas.
+
+Resultado de scripts/consultas_demo.sql
+---------------------------------------
+  Archivo   : consultas_demo.sql
+  Usuario   : FORO
+  Sentencias: 7
+  ----------------------------------------------------------------------
+  OK   SELECT 'CATEGORIA' AS TABLA, COUNT(*) AS REGISTROS FROM CATE...
+        TABLA | REGISTROS
+        CATEGORIA | 6
+        TEMA | 9
+        COMENTARIO | 13
+        (3 filas)
+  OK   SELECT c.NOMBRE AS CATEGORIA, COUNT(DISTINCT t.ID) AS TEMAS,...
+        CATEGORIA | TEMAS | COMENTARIOS
+        Competencias WCA | 2 | 2
+        Hardware y mods | 2 | 3
+        Métodos y algoritmos | 2 | 4
+        Big cubes | 1 | 1
+        Cubo 3x3 | 1 | 2
+        Puzzles no cúbicos | 1 | 1
+        (6 filas)
+  OK   SELECT t.ID, c.NOMBRE AS CATEGORIA, t.AUTOR_NOMBRE, t.TITULO...
+        ID | CATEGORIA | AUTOR_NOMBRE | TITULO | PUBLICADO
+        9 | Hardware y mods | yiheng | Lubricantes: Angstrom contra DNM-37 | 29-10-2026 16:21:14
+        8 | Hardware y mods | feliks | Reseña del GAN 14 con MagLev | 29-10-2026 16:21:14
+        7 | Competencias WCA | moderadora | Las tres reglas que más descalifican | 29-10-2026 16:21:14
+        6 | Competencias WCA | admin | Nacional WCA Chile 2026: organización | 29-10-2026 16:21:14
+        5 | Puzzles no cúbicos | moderadora | Megaminx: cómo memorizar la última capa | 29-10-2026 16:21:14
+        4 | Big cubes | yiheng | La paridad del 4x4 me sigue costando | 29-10-2026 16:21:14
+        3 | Métodos y algoritmos | feliks | Memorizar las 57 OLL en un mes | 29-10-2026 16:21:14
+        2 | Métodos y algoritmos | yiheng | ¿CFOP o Roux para bajar de 15? | 29-10-2026 16:21:14
+        1 | Cubo 3x3 | feliks | Por fin bajé de 20 segundos | 29-10-2026 16:21:14
+        (9 filas)
+  OK   SELECT t.TITULO, cm.AUTOR_NOMBRE AS COMENTA, cm.CONTENIDO, T...
+        TITULO | COMENTA | CONTENIDO | HORA
+        Lubricantes: Angstrom contra DNM-37 | feliks | Coincido. En las piezas casi no se nota después del primer día. | 16:21:14
+        (1 filas)
+  OK   SELECT t.ID, t.AUTOR_NOMBRE, t.TITULO FROM TEMA t WHERE UPPE...
+        ID | AUTOR_NOMBRE | TITULO
+        2 | yiheng | ¿CFOP o Roux para bajar de 15?
+        (1 filas)
+  OK   SELECT AUTOR_NOMBRE, COUNT(*) AS TEMAS FROM TEMA GROUP BY AU...
+        AUTOR_NOMBRE | TEMAS
+        feliks | 3
+        yiheng | 3
+        moderadora | 2
+        admin | 1
+        (4 filas)
+  OK   SELECT TITULO FROM TEMA WHERE TITULO LIKE '%é%' OR TITULO LI...
+        TITULO
+        Por fin bajé de 20 segundos
+        Megaminx: cómo memorizar la última capa
+        Nacional WCA Chile 2026: organización
+        Reseña del GAN 14 con MagLev
+        (4 filas)
+  ----------------------------------------------------------------------
+  Todas las sentencias se ejecutaron sin errores.
+
+===================================================================
+ Verificacion de privilegios en vivo (HTTP real, misma sesion)
+===================================================================
+
+  Operacion                                   Rol        HTTP
+  ------------------------------------------  ---------  ----
+  GET  /api/usuarios            sin token     anonimo     401
+  GET  /api/usuarios            con token     USUARIO     403
+  GET  /api/usuarios            con token     ADMIN       200
+  GET  /api/usuarios/3  (propia cuenta)       USUARIO     200
+  GET  /api/usuarios/4  (cuenta ajena)        USUARIO     403
+  POST /api/categorias                        USUARIO     403
+  POST /api/categorias                        ADMIN       201
+  PUT  /api/temas/{ajeno}                     USUARIO     403
+  DELETE /api/temas/{ajeno}                   ADMIN       204
+
+  La diferencia entre 401 y 403 es deliberada: 401 significa que no hay
+  identidad, 403 que la identidad existe pero no alcanza. Conseguirla
+  exigio permitir el despacho interno a /error en la configuracion de
+  seguridad; sin eso, el reenvio llegaba sin sesion y todo salia 401.
