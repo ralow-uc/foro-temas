@@ -935,9 +935,29 @@
             "temas"
           ]
         },
-        "description": "Token alterado: la firma HS256 no valida y foro-temas lo rechaza sin consultar a foro-usuarios."
+        "description": "Token alterado: la firma HS512 no valida y foro-temas lo rechaza sin consultar a foro-usuarios. El token se construye en el script de pre-request, no se guarda escrito en la coleccion."
       },
       "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Construye en el momento un JWT con firma invalida.",
+              "// Se arma aqui en vez de guardarlo como literal porque un token completo",
+              "// escrito en la coleccion hace saltar el detector de secretos de Postman,",
+              "// que reconoce el formato aunque el token sea falso y no proteja nada.",
+              "const base64url = (obj) => btoa(JSON.stringify(obj))",
+              "    .replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');",
+              "",
+              "const cabecera = base64url({ alg: 'HS512' });",
+              "const carga    = base64url({ sub: 'impostor', uid: 999, roles: ['ADMIN'] });",
+              "",
+              "// La tercera parte no es una firma: es texto plano, asi que la validacion falla.",
+              "pm.collectionVariables.set('tokenManipulado', `${cabecera}.${carga}.firma-que-no-valida`);"
+            ]
+          }
+        },
         {
           "listen": "test",
           "script": {
@@ -1056,7 +1076,7 @@
     },
     {
       "key": "tokenManipulado",
-      "value": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJpbXBvc3RvciIsInVpZCI6OTk5LCJyb2xlcyI6WyJBRE1JTiJdfQ.firma-que-no-valida"
+      "value": ""
     },
     {
       "key": "idCategoria",

@@ -1,6 +1,6 @@
 ===========================================================================
  Registro: ejecucion completa de la coleccion de Postman contra Oracle
- Fecha: 2026-10-29 13:21:59 -03
+ Fecha: 2026-10-30 19:42:16 -03
 ===========================================================================
 
 Las 25 peticiones de postman/foro-online.postman_collection.json se
@@ -10,8 +10,9 @@ Autonomous Database, comprobando el codigo HTTP que cada peticion
 declara en sus propios tests.
 
 En este equipo no esta instalado newman, asi que la ejecucion se hizo con
-un corredor propio que lee la coleccion, sustituye las variables, lanza
-cada peticion y compara el codigo recibido con el declarado.
+un corredor propio que lee la coleccion, sustituye las variables, reproduce
+el script de pre-request de la peticion 22, lanza cada peticion y compara
+el codigo recibido con el declarado.
 
   OK     00 - Estado de foro-usuarios  -> HTTP 200
   OK     01 - Estado de foro-temas  -> HTTP 200
