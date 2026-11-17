@@ -55,7 +55,7 @@ public class CategoriaServiceImpl implements CategoriaService {
     public CategoriaResponse obtenerPorId(Long id) {
         Categoria categoria = categoriaRepository.findById(id)
                 .orElseThrow(() -> new CategoriaNoEncontradaException(id));
-        return CategoriaResponse.desde(categoria, temaRepository.countByCategoriaId(id));
+        return CategoriaResponse.desde(categoria, temaRepository.countByCategoriaIdAndBaneadoFalse(id));
     }
 
     @Override

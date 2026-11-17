@@ -17,4 +17,13 @@ public interface ComentarioRepository extends JpaRepository<Comentario, Long> {
 
     /** Cuantos comentarios tiene un tema. */
     long countByTemaId(Long temaId);
+
+    /** Comentarios visibles (no baneados) de un tema, en orden cronologico. */
+    List<Comentario> findByTemaIdAndBaneadoFalseOrderByFechaCreacionAsc(Long temaId);
+
+    /** Cuantos comentarios visibles (no baneados) tiene un tema. */
+    long countByTemaIdAndBaneadoFalse(Long temaId);
+
+    /** Comentarios retirados por moderacion. */
+    List<Comentario> findByBaneadoTrueOrderByFechaCreacionDesc();
 }

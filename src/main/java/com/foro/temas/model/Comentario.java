@@ -1,6 +1,7 @@
 package com.foro.temas.model;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -11,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import org.hibernate.type.NumericBooleanConverter;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -45,6 +47,22 @@ public class Comentario {
 
     @Column(name = "FECHA_CREACION", nullable = false)
     private LocalDateTime fechaCreacion;
+
+    /**
+     * 1 si un moderador retiro el contenido por incumplir las normas del foro.
+     *
+     * El contenido baneado no se borra: deja de mostrarse en los listados y en
+     * el detalle publico, pero queda en la base como evidencia y se puede
+     * restituir si la sancion se levanta. Lo cambia el microservicio
+     * foro-moderacion a traves de PUT /api/.../moderacion.
+     */
+    @Column(name = "BANEADO", nullable = false)
+    @Convert(converter = NumericBooleanConverter.class)
+    private boolean baneado = false;
+
+    /** Motivo que dejo el moderador al banear el contenido. Nulo si no esta baneado. */
+    @Column(name = "MOTIVO_BANEO", length = 500)
+    private String motivoBaneo;
 
     protected Comentario() {
         // Constructor requerido por JPA.
@@ -111,6 +129,34 @@ public class Comentario {
 
     public void setFechaCreacion(LocalDateTime fechaCreacion) {
         this.fechaCreacion = fechaCreacion;
+    }
+
+    public boolean isBaneado() {
+        return baneado;
+    }
+
+    public void setBaneado(boolean baneado) {
+        this.baneado = baneado;
+    }
+
+    public String getMotivoBaneo() {
+        return motivoBaneo;
+    }
+
+    public void setMotivoBaneo(String motivoBaneo) {
+        this.motivoBaneo = motivoBaneo;
+    }
+
+    /** Retira el contenido del foro dejando constancia del motivo. */
+    public void banear(String motivo) {
+        this.baneado = true;
+        this.motivoBaneo = motivo;
+    }
+
+    /** Restituye el contenido cuando se levanta la sancion. */
+    public void restituir() {
+        this.baneado = false;
+        this.motivoBaneo = null;
     }
 
     @Override

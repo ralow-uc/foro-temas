@@ -72,6 +72,22 @@ public class Tema {
     private boolean cerrado = false;
 
     /**
+     * 1 si un moderador retiro el contenido por incumplir las normas del foro.
+     *
+     * El contenido baneado no se borra: deja de mostrarse en los listados y en
+     * el detalle publico, pero queda en la base como evidencia y se puede
+     * restituir si la sancion se levanta. Lo cambia el microservicio
+     * foro-moderacion a traves de PUT /api/.../moderacion.
+     */
+    @Column(name = "BANEADO", nullable = false)
+    @Convert(converter = NumericBooleanConverter.class)
+    private boolean baneado = false;
+
+    /** Motivo que dejo el moderador al banear el contenido. Nulo si no esta baneado. */
+    @Column(name = "MOTIVO_BANEO", length = 500)
+    private String motivoBaneo;
+
+    /**
      * Comentarios del tema. Se cargan en diferido porque el listado de temas no
      * los necesita; solo el detalle de un tema los recorre.
      */
@@ -175,6 +191,34 @@ public class Tema {
 
     public void setCerrado(boolean cerrado) {
         this.cerrado = cerrado;
+    }
+
+    public boolean isBaneado() {
+        return baneado;
+    }
+
+    public void setBaneado(boolean baneado) {
+        this.baneado = baneado;
+    }
+
+    public String getMotivoBaneo() {
+        return motivoBaneo;
+    }
+
+    public void setMotivoBaneo(String motivoBaneo) {
+        this.motivoBaneo = motivoBaneo;
+    }
+
+    /** Retira el contenido del foro dejando constancia del motivo. */
+    public void banear(String motivo) {
+        this.baneado = true;
+        this.motivoBaneo = motivo;
+    }
+
+    /** Restituye el contenido cuando se levanta la sancion. */
+    public void restituir() {
+        this.baneado = false;
+        this.motivoBaneo = null;
     }
 
     public List<Comentario> getComentarios() {
