@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Foro en Linea - Cubos Rubik y Twisty Puzzles",
-    "description": "Coleccion ordenada como secuencia de demostracion: se puede correr de principio a fin con Run collection sin editar nada.\n\nCubre los DOS microservicios del foro, que viven en repositorios separados, porque la demostracion los recorre juntos: el token se obtiene en foro-usuarios y se usa en foro-temas. Es el mismo archivo en los dos repositorios.\n\nLos dos servicios tienen que estar arrancados, cada uno desde su repositorio:\n  foro-usuarios:  ./scripts/run.sh   -> puerto 8081\n  foro-temas:      ./scripts/run.sh   -> puerto 8082\n\nEl recorrido es: leer el foro sin identificarse, registrarse, iniciar sesion, publicar, comentar, editar lo propio, chocar con los limites del rol USUARIO, repetir esas mismas operaciones como ADMIN y terminar con los casos de error de seguridad y validacion.\n\nCada peticion lleva sus propios tests y guarda en variables lo que necesitan las siguientes (token, idTema, idUsuario).",
+    "name": "Foro en Linea CuboClub - 3 microservicios (S5)",
+    "description": "Coleccion de demostracion de los TRES microservicios del Sistema de Foros en Linea, ordenada para correrse de principio a fin con Run collection sin editar nada.\n\n  00-24  foro-usuarios + foro-temas (Experiencia 1, Semana 2)\n  25-58  foro-moderacion (Experiencia 2, Semana 5): normas, reportes, sanciones y su efecto en foro-temas\n\nVariables de URL: urlUsuarios, urlForo y urlModeracion. Para la nube (Docker) importa el entorno postman/foro-docker-cloud.postman_environment.json y reemplaza las tres URL por las publicas de Play with Docker.\n\nEs el mismo archivo en los tres repositorios.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -1055,6 +1055,1507 @@
           }
         }
       ]
+    },
+    {
+      "name": "25 - Estado de foro-moderacion",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{urlModeracion}}/api/estado",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "estado"
+          ]
+        },
+        "description": "Tercer microservicio (S5), generado con microservicio-arquetipo. Informa el motor de base de datos real."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test('servicio foro-moderacion', () => pm.expect(d.servicio).to.eql('foro-moderacion'));",
+              "console.log('Base de datos:', d.baseDeDatos.motor);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 - GET normas del foro (publico)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{urlModeracion}}/api/normas",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "normas"
+          ]
+        },
+        "description": "Las normas que citan reportes y sanciones. Leerlas no requiere token."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test('hay al menos 5 normas', () => pm.expect(d.length).to.be.at.least(5));",
+              "const n2 = d.find(n => n.codigo === 'N2');",
+              "pm.collectionVariables.set('idNormaSpam', n2.id);",
+              "pm.collectionVariables.set('idNormaRespeto', d.find(n => n.codigo === 'N1').id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 - POST login de moderadora (MODERADOR)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{urlUsuarios}}/api/auth/login",
+          "host": [
+            "{{urlUsuarios}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Inicia sesion como moderadora (MODERADOR).",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombreUsuario\": \"moderadora\",\n  \"contrasena\": \"Cubo12345*\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test('tiene el rol MODERADOR', () => pm.expect(d.roles).to.include('MODERADOR'));",
+              "pm.collectionVariables.set('tokenModerador', d.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "28 - POST login de feliks (USUARIO)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{urlUsuarios}}/api/auth/login",
+          "host": [
+            "{{urlUsuarios}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Inicia sesion como feliks (USUARIO).",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombreUsuario\": \"feliks\",\n  \"contrasena\": \"Cubo12345*\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test('tiene el rol USUARIO', () => pm.expect(d.roles).to.include('USUARIO'));",
+              "pm.collectionVariables.set('tokenFeliks', d.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "29 - POST feliks publica un tema con publicidad",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenFeliks}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlForo}}/api/temas",
+          "host": [
+            "{{urlForo}}"
+          ],
+          "path": [
+            "api",
+            "temas"
+          ]
+        },
+        "description": "Contenido que incumple la norma N2. Se publica en foro-temas como cualquier tema.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"categoriaId\": \"{{idCategoria}}\",\n  \"titulo\": \"Compra cubos baratos en mi tienda online\",\n  \"contenido\": \"Descuentos en cubos magneticos: visita mi tienda y usa el codigo FELIKS20.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "const d = pm.response.json();",
+              "pm.collectionVariables.set('idTemaSpam', d.id);",
+              "pm.collectionVariables.set('idFeliks', d.autorId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 - POST login de yiheng (USUARIO)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{urlUsuarios}}/api/auth/login",
+          "host": [
+            "{{urlUsuarios}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Inicia sesion como yiheng (USUARIO).",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombreUsuario\": \"yiheng\",\n  \"contrasena\": \"Cubo12345*\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test('tiene el rol USUARIO', () => pm.expect(d.roles).to.include('USUARIO'));",
+              "pm.collectionVariables.set('tokenYiheng', d.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "31 - POST yiheng reporta el tema (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenYiheng}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes"
+          ]
+        },
+        "description": "Cualquier usuario autenticado puede reportar. El reportante sale del JWT, no del cuerpo.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"TEMA\",\n  \"contenidoId\": \"{{idTemaSpam}}\",\n  \"normaId\": \"{{idNormaSpam}}\",\n  \"detalle\": \"Es publicidad de una tienda.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "const d = pm.response.json();",
+              "pm.test('queda PENDIENTE', () => pm.expect(d.estado).to.eql('PENDIENTE'));",
+              "pm.test('reportante tomado del token', () => pm.expect(d.reportanteNombre).to.eql('yiheng'));",
+              "pm.collectionVariables.set('idReporte', d.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32 - POST el mismo reporte otra vez (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenYiheng}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes"
+          ]
+        },
+        "description": "Un usuario no puede tener dos reportes pendientes sobre el mismo contenido.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"TEMA\",\n  \"contenidoId\": \"{{idTemaSpam}}\",\n  \"normaId\": \"{{idNormaSpam}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "33 - POST feliks reporta un tema que si cumple las normas",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenFeliks}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes"
+          ]
+        },
+        "description": "Un reporte infundado: la moderadora lo descartara mas adelante.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"TEMA\",\n  \"contenidoId\": \"{{idTemaAjeno}}\",\n  \"normaId\": \"{{idNormaRespeto}}\",\n  \"detalle\": \"No estoy de acuerdo con el tema.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('idReporteADescartar', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "34 - GET mis reportes (yiheng)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenYiheng}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes/mios",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes",
+            "mios"
+          ]
+        },
+        "description": "Cada usuario ve en que quedaron sus propios reportes."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('incluye el reporte recien creado', () => pm.expect(pm.response.json().map(r => r.id)).to.include(Number(pm.collectionVariables.get('idReporte'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "35 - GET bandeja de reportes con USUARIO (403)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenYiheng}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes"
+          ]
+        },
+        "description": "La bandeja de moderacion no es para el rol USUARIO."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "36 - GET reportes pendientes con MODERADOR (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes?estado=PENDIENTE",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes"
+          ],
+          "query": [
+            {
+              "key": "estado",
+              "value": "PENDIENTE"
+            }
+          ]
+        },
+        "description": "La moderadora ve los reportes pendientes, del mas antiguo al mas nuevo."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test('todos pendientes', () => d.forEach(r => pm.expect(r.estado).to.eql('PENDIENTE')));",
+              "pm.test('incluye los dos reportes nuevos', () => pm.expect(d.map(r => r.id)).to.include.members([Number(pm.collectionVariables.get('idReporte')), Number(pm.collectionVariables.get('idReporteADescartar'))]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "37 - POST sancion con USUARIO (403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenYiheng}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones"
+          ]
+        },
+        "description": "Banear es privilegio de MODERADOR o ADMIN.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"TEMA\",\n  \"contenidoId\": \"{{idTemaSpam}}\",\n  \"normaId\": \"{{idNormaSpam}}\",\n  \"motivo\": \"Publicidad de una tienda externa\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "38 - POST sancion: la moderadora banea el tema (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones"
+          ]
+        },
+        "description": "foro-moderacion elige la estrategia del tipo TEMA (patron Strategy + Factory), pide el baneo a foro-temas reenviando el JWT de la moderadora, registra la sancion y acepta los reportes pendientes sobre ese tema.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"TEMA\",\n  \"contenidoId\": \"{{idTemaSpam}}\",\n  \"normaId\": \"{{idNormaSpam}}\",\n  \"reporteId\": \"{{idReporte}}\",\n  \"motivo\": \"Publicidad de una tienda externa con codigo de descuento\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "const d = pm.response.json();",
+              "pm.test('vigente', () => pm.expect(d.vigente).to.be.true);",
+              "pm.test('autor informado por foro-temas', () => pm.expect(d.autorNombre).to.eql('feliks'));",
+              "pm.test('acepto el reporte', () => pm.expect(d.reportesAceptados).to.be.at.least(1));",
+              "pm.collectionVariables.set('idSancion', d.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "39 - GET el tema baneado en foro-temas (410)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{urlForo}}/api/temas/{{idTemaSpam}}",
+          "host": [
+            "{{urlForo}}"
+          ],
+          "path": [
+            "api",
+            "temas",
+            "{{idTemaSpam}}"
+          ]
+        },
+        "description": "El contenido baneado no se borra: foro-temas responde 410 Gone con el motivo."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 410', () => pm.response.to.have.status(410));",
+              "pm.test('contenido moderado', () => pm.expect(pm.response.json().title).to.eql('Contenido moderado'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "40 - GET busqueda en foro-temas: el tema ya no aparece",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{urlForo}}/api/temas?texto=tienda online",
+          "host": [
+            "{{urlForo}}"
+          ],
+          "path": [
+            "api",
+            "temas"
+          ],
+          "query": [
+            {
+              "key": "texto",
+              "value": "tienda online"
+            }
+          ]
+        },
+        "description": "Los listados y busquedas publicas excluyen el contenido baneado."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('sin resultados', () => pm.expect(pm.response.json().contenido.map(t => t.id)).to.not.include(Number(pm.collectionVariables.get('idTemaSpam'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "41 - GET reporte aceptado",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes/{{idReporte}}",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes",
+            "{{idReporte}}"
+          ]
+        },
+        "description": "El reporte quedo ACEPTADO al crear la sancion."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('ACEPTADO', () => pm.expect(pm.response.json().estado).to.eql('ACEPTADO'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "42 - POST sancion duplicada (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones"
+          ]
+        },
+        "description": "Un contenido no puede tener dos sanciones vigentes.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"TEMA\",\n  \"contenidoId\": \"{{idTemaSpam}}\",\n  \"normaId\": \"{{idNormaSpam}}\",\n  \"motivo\": \"Otra vez el mismo contenido\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "43 - POST sancion sobre un tema inexistente (404)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones"
+          ]
+        },
+        "description": "foro-temas responde 404 y el adaptador lo traduce; no se registra ninguna sancion.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"TEMA\",\n  \"contenidoId\": 999999,\n  \"normaId\": \"{{idNormaSpam}}\",\n  \"motivo\": \"Publicidad de una tienda externa\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "44 - POST sancion de un comentario (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones"
+          ]
+        },
+        "description": "Mismo endpoint, otra estrategia: el comentario 12 se oculta del tema pero el tema sigue visible.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"COMENTARIO\",\n  \"contenidoId\": 12,\n  \"normaId\": \"{{idNormaRespeto}}\",\n  \"motivo\": \"Comentario despectivo hacia el autor de la resena\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "const d = pm.response.json();",
+              "pm.test('tipo COMENTARIO', () => pm.expect(d.tipoContenido).to.eql('COMENTARIO'));",
+              "pm.collectionVariables.set('idSancionComentario', d.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "45 - GET contenido baneado en foro-temas (MODERADOR)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlForo}}/api/moderacion/baneados",
+          "host": [
+            "{{urlForo}}"
+          ],
+          "path": [
+            "api",
+            "moderacion",
+            "baneados"
+          ]
+        },
+        "description": "Vista de moderacion de foro-temas: el tema y el comentario baneados con su motivo."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('incluye el tema baneado', () => pm.expect(pm.response.json().map(x => x.id)).to.include(Number(pm.collectionVariables.get('idTemaSpam'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "46 - PUT descartar otro reporte pendiente (200)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes/{{idReporteADescartar}}/descartar",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes",
+            "{{idReporteADescartar}}",
+            "descartar"
+          ]
+        },
+        "description": "La moderadora revisa un reporte y concluye que no incumple las normas."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('DESCARTADO', () => pm.expect(pm.response.json().estado).to.eql('DESCARTADO'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "47 - PUT levantar sancion con MODERADOR (403)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenModerador}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones/{{idSancion}}/levantar",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones",
+            "{{idSancion}}",
+            "levantar"
+          ]
+        },
+        "description": "Levantar una sancion es exclusivo del ADMIN: el moderador actua, el administrador revisa apelaciones.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"motivo\": \"Apelacion del autor\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "48 - POST login de admin (ADMIN)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{urlUsuarios}}/api/auth/login",
+          "host": [
+            "{{urlUsuarios}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Inicia sesion como admin (ADMIN).",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombreUsuario\": \"admin\",\n  \"contrasena\": \"Cubo12345*\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test('tiene el rol ADMIN', () => pm.expect(d.roles).to.include('ADMIN'));",
+              "pm.collectionVariables.set('tokenAdmin', d.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "49 - PUT levantar sancion con ADMIN (200)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenAdmin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones/{{idSancion}}/levantar",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones",
+            "{{idSancion}}",
+            "levantar"
+          ]
+        },
+        "description": "Restituye el tema en foro-temas y deja la sancion en el historial con VIGENTE = 0.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"motivo\": \"Apelacion aceptada: el autor retiro el codigo de descuento\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test('ya no vigente', () => pm.expect(d.vigente).to.be.false);",
+              "pm.test('levantada por admin', () => pm.expect(d.levantadaPor).to.eql('admin'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "50 - GET el tema restituido (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{urlForo}}/api/temas/{{idTemaSpam}}",
+          "host": [
+            "{{urlForo}}"
+          ],
+          "path": [
+            "api",
+            "temas",
+            "{{idTemaSpam}}"
+          ]
+        },
+        "description": "Vuelve a estar visible."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "51 - GET historial de sanciones de feliks",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenAdmin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones/autor/{{idFeliks}}",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones",
+            "autor",
+            "{{idFeliks}}"
+          ]
+        },
+        "description": "Reincidencia: todas las sanciones sobre contenido de un autor, vigentes o no."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('al menos una', () => pm.expect(pm.response.json().length).to.be.at.least(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "52 - GET sanciones vigentes",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenAdmin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones?vigente=true",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones"
+          ],
+          "query": [
+            {
+              "key": "vigente",
+              "value": "true"
+            }
+          ]
+        },
+        "description": "Filtro por vigencia (y opcionalmente ?tipo=TEMA|COMENTARIO)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('todas vigentes', () => pm.response.json().forEach(s => pm.expect(s.vigente).to.be.true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "53 - POST norma nueva con ADMIN (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenAdmin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/normas",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "normas"
+          ]
+        },
+        "description": "CRUD de normas: solo ADMIN.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"N99\",\n  \"nombre\": \"Norma de prueba de la coleccion\",\n  \"descripcion\": \"Se crea y se elimina en la demostracion.\",\n  \"gravedad\": \"LEVE\",\n  \"activo\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('idNormaNueva', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "54 - POST norma con USUARIO (403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenYiheng}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/normas",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "normas"
+          ]
+        },
+        "description": "El rol USUARIO no administra normas.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"N98\",\n  \"nombre\": \"Otra norma\",\n  \"descripcion\": \"x\",\n  \"gravedad\": \"LEVE\",\n  \"activo\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "55 - PUT editar la norma (200)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenAdmin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/normas/{{idNormaNueva}}",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "normas",
+            "{{idNormaNueva}}"
+          ]
+        },
+        "description": "Cambia la gravedad.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"N99\",\n  \"nombre\": \"Norma de prueba de la coleccion\",\n  \"descripcion\": \"Editada en la demostracion.\",\n  \"gravedad\": \"CRITICA\",\n  \"activo\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('CRITICA', () => pm.expect(pm.response.json().gravedad).to.eql('CRITICA'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "56 - DELETE la norma (204)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenAdmin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/normas/{{idNormaNueva}}",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "normas",
+            "{{idNormaNueva}}"
+          ]
+        },
+        "description": "Una norma sin reportes ni sanciones se puede eliminar."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "57 - POST reporte con tipo invalido (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenYiheng}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/reportes",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "reportes"
+          ]
+        },
+        "description": "tipoContenido solo admite TEMA o COMENTARIO.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoContenido\": \"PERFIL\",\n  \"contenidoId\": 1,\n  \"normaId\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "58 - PUT levantar la sancion del comentario (limpieza)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenAdmin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlModeracion}}/api/sanciones/{{idSancionComentario}}/levantar",
+          "host": [
+            "{{urlModeracion}}"
+          ],
+          "path": [
+            "api",
+            "sanciones",
+            "{{idSancionComentario}}",
+            "levantar"
+          ]
+        },
+        "description": "Deja los datos como estaban para poder volver a correr la coleccion.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"motivo\": \"Restitucion al final de la demostracion\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "59 - DELETE el tema de publicidad (limpieza)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenAdmin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{urlForo}}/api/temas/{{idTemaSpam}}",
+          "host": [
+            "{{urlForo}}"
+          ],
+          "path": [
+            "api",
+            "temas",
+            "{{idTemaSpam}}"
+          ]
+        },
+        "description": "El ADMIN elimina el tema de prueba en foro-temas."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -1065,6 +2566,10 @@
     {
       "key": "urlForo",
       "value": "http://localhost:8082"
+    },
+    {
+      "key": "urlModeracion",
+      "value": "http://localhost:8083"
     },
     {
       "key": "token",
@@ -1096,6 +2601,54 @@
     },
     {
       "key": "idUsuario",
+      "value": ""
+    },
+    {
+      "key": "tokenModerador",
+      "value": ""
+    },
+    {
+      "key": "tokenFeliks",
+      "value": ""
+    },
+    {
+      "key": "tokenYiheng",
+      "value": ""
+    },
+    {
+      "key": "idNormaSpam",
+      "value": ""
+    },
+    {
+      "key": "idNormaRespeto",
+      "value": ""
+    },
+    {
+      "key": "idTemaSpam",
+      "value": ""
+    },
+    {
+      "key": "idFeliks",
+      "value": ""
+    },
+    {
+      "key": "idReporte",
+      "value": ""
+    },
+    {
+      "key": "idReporteADescartar",
+      "value": ""
+    },
+    {
+      "key": "idSancion",
+      "value": ""
+    },
+    {
+      "key": "idSancionComentario",
+      "value": ""
+    },
+    {
+      "key": "idNormaNueva",
       "value": ""
     }
   ]

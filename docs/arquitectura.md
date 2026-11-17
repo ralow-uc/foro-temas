@@ -1,5 +1,14 @@
 # Arquitectura
 
+> **Actualización S5 (v2.0.0).** El caso tiene ahora tres microservicios: a los
+> dos de abajo se suma `foro-moderacion` (8083, normas, reportes y sanciones),
+> generado con `microservicio-arquetipo`. Su única comunicación con otro
+> servicio es `PUT /api/moderacion/{temas|comentarios}/{id}` hacia `foro-temas`,
+> reenviando el JWT del moderador. El diagrama de los tres, el despliegue en
+> Docker y la matriz de roles completa están en
+> `foro-moderacion/docs/arquitectura.md`. Lo que sigue describe la base
+> construida en S2, que se mantiene.
+
 ## Visión general
 
 Dos aplicaciones Spring Boot **independientes**, **cada una en su propio
