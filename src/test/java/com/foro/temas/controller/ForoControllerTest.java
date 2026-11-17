@@ -2,6 +2,7 @@ package com.foro.temas.controller;
 
 import com.foro.temas.dto.CategoriaRequest;
 import com.foro.temas.dto.ComentarioRequest;
+import com.foro.temas.dto.ModeracionRequest;
 import com.foro.temas.dto.TemaRequest;
 import com.foro.temas.repository.CategoriaRepository;
 import com.foro.temas.repository.ComentarioRepository;
@@ -62,6 +63,7 @@ class ForoControllerTest {
     private String tokenFeliks;
     private String tokenYiheng;
     private String tokenAdmin;
+    private String tokenModeradora;
 
     @BeforeEach
     void prepararBase() {
@@ -74,6 +76,7 @@ class ForoControllerTest {
         tokenFeliks = tokens.para(1L, "feliks", "USUARIO");
         tokenYiheng = tokens.para(2L, "yiheng", "USUARIO");
         tokenAdmin = tokens.para(9L, "admin", "ADMIN");
+        tokenModeradora = tokens.para(5L, "moderadora", "MODERADOR", "USUARIO");
     }
 
     private String json(Object cuerpo) throws Exception {
@@ -334,5 +337,78 @@ class ForoControllerTest {
                 .andExpect(jsonPath("$.estado").value("OK"))
                 .andExpect(jsonPath("$.servicio").value("foro-temas"))
                 .andExpect(jsonPath("$.baseDeDatos.conectada").value(true));
+    }
+
+    // ---------------------------------------------------------------- moderacion
+
+    @Test
+    @DisplayName("PUT /api/moderacion/temas/{id}: 401 sin token, 403 con USUARIO, 200 con MODERADOR")
+    void moderarTemaExigeRolModerador() throws Exception {
+        Long idTema = publicarTema(tokenYiheng, "Compra cubos baratos aqui");
+        String orden = json(new ModeracionRequest(true, "Spam: publicidad externa"));
+
+        mockMvc.perform(put("/api/moderacion/temas/{id}", idTema)
+                        .contentType(MediaType.APPLICATION_JSON).content(orden))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(put("/api/moderacion/temas/{id}", idTema).header("Authorization", tokenFeliks)
+                        .contentType(MediaType.APPLICATION_JSON).content(orden))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/moderacion/temas/{id}", idTema).header("Authorization", tokenModeradora)
+                        .contentType(MediaType.APPLICATION_JSON).content(orden))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("TEMA"))
+                .andExpect(jsonPath("$.baneado").value(true))
+                .andExpect(jsonPath("$.autorNombre").value("yiheng"));
+
+        mockMvc.perform(get("/api/temas/{id}", idTema))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.title").value("Contenido moderado"));
+
+        mockMvc.perform(get("/api/temas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("PUT /api/moderacion/comentarios/{id} y GET /api/moderacion/baneados con ADMIN")
+    void moderarComentarioYListarBaneados() throws Exception {
+        Long idTema = publicarTema(tokenFeliks, "Mi primer sub-20");
+        String respuesta = mockMvc.perform(post("/api/temas/{id}/comentarios", idTema)
+                        .header("Authorization", tokenYiheng)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new ComentarioRequest("Comentario ofensivo."))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long idComentario = objectMapper.readTree(respuesta).get("id").asLong();
+
+        mockMvc.perform(put("/api/moderacion/comentarios/{id}", idComentario).header("Authorization", tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new ModeracionRequest(true, "Lenguaje ofensivo"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("COMENTARIO"));
+
+        mockMvc.perform(get("/api/temas/{id}", idTema))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comentarios.length()").value(0));
+
+        mockMvc.perform(get("/api/moderacion/baneados").header("Authorization", tokenModeradora))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].motivo").value("Lenguaje ofensivo"));
+
+        mockMvc.perform(get("/api/moderacion/baneados").header("Authorization", tokenFeliks))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("PUT /api/moderacion/temas/{id} responde 400 si se banea sin motivo")
+    void moderarSinMotivoDevuelve400() throws Exception {
+        Long idTema = publicarTema(tokenFeliks, "Mi primer sub-20");
+        mockMvc.perform(put("/api/moderacion/temas/{id}", idTema).header("Authorization", tokenModeradora)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new ModeracionRequest(true, ""))))
+                .andExpect(status().isBadRequest());
     }
 }

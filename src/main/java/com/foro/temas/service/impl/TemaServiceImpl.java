@@ -2,12 +2,16 @@ package com.foro.temas.service.impl;
 
 import com.foro.temas.dto.ComentarioRequest;
 import com.foro.temas.dto.ComentarioResponse;
+import com.foro.temas.dto.ModeracionRequest;
+import com.foro.temas.dto.ModeracionResponse;
 import com.foro.temas.dto.PaginaResponse;
 import com.foro.temas.dto.TemaDetalleResponse;
 import com.foro.temas.dto.TemaRequest;
 import com.foro.temas.dto.TemaResponse;
 import com.foro.temas.exception.CategoriaNoEncontradaException;
 import com.foro.temas.exception.ComentarioNoEncontradoException;
+import com.foro.temas.exception.ContenidoModeradoException;
+import com.foro.temas.exception.DatosInvalidosException;
 import com.foro.temas.exception.OperacionNoPermitidaException;
 import com.foro.temas.exception.TemaCerradoException;
 import com.foro.temas.exception.TemaNoEncontradoException;
@@ -28,14 +32,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Implementacion de la logica de negocio de los temas y comentarios del foro.
  *
- * Aqui viven dos reglas que no son del controlador:
+ * Aqui viven las reglas que no son del controlador:
  *   - el autor de un contenido manda sobre el suyo y un ADMIN sobre todo;
- *   - un tema cerrado no admite comentarios nuevos.
+ *   - un tema cerrado no admite comentarios nuevos;
+ *   - el contenido baneado por moderacion deja de ser visible para el publico
+ *     (no se borra: se puede restituir si se levanta la sancion).
  */
 @Service
 public class TemaServiceImpl implements TemaService {
@@ -70,13 +77,13 @@ public class TemaServiceImpl implements TemaService {
                 categoriaId, normalizar(texto), normalizar(autor), paginacion);
 
         return PaginaResponse.desde(resultado,
-                tema -> TemaResponse.desde(tema, comentarioRepository.countByTemaId(tema.getId())));
+                tema -> TemaResponse.desde(tema, comentarioRepository.countByTemaIdAndBaneadoFalse(tema.getId())));
     }
 
     @Override
     @Transactional(readOnly = true)
     public TemaDetalleResponse obtenerPorId(Long id) {
-        Tema tema = buscarTemaOFallar(id);
+        Tema tema = buscarTemaVisibleOFallar(id);
         return TemaDetalleResponse.desde(tema, listarComentarios(id));
     }
 
@@ -113,7 +120,7 @@ public class TemaServiceImpl implements TemaService {
         tema.setContenido(solicitud.contenido().trim());
 
         Tema guardado = temaRepository.save(tema);
-        return TemaResponse.desde(guardado, comentarioRepository.countByTemaId(id));
+        return TemaResponse.desde(guardado, comentarioRepository.countByTemaIdAndBaneadoFalse(id));
     }
 
     @Override
@@ -129,7 +136,7 @@ public class TemaServiceImpl implements TemaService {
     @Override
     @Transactional
     public ComentarioResponse comentar(Long temaId, ComentarioRequest solicitud, UsuarioAutenticado autor) {
-        Tema tema = buscarTemaOFallar(temaId);
+        Tema tema = buscarTemaVisibleOFallar(temaId);
         if (tema.isCerrado()) {
             throw new TemaCerradoException(temaId);
         }
@@ -149,10 +156,8 @@ public class TemaServiceImpl implements TemaService {
     @Override
     @Transactional(readOnly = true)
     public List<ComentarioResponse> listarComentarios(Long temaId) {
-        if (!temaRepository.existsById(temaId)) {
-            throw new TemaNoEncontradoException(temaId);
-        }
-        return comentarioRepository.findByTemaIdOrderByFechaCreacionAsc(temaId).stream()
+        buscarTemaVisibleOFallar(temaId);
+        return comentarioRepository.findByTemaIdAndBaneadoFalseOrderByFechaCreacionAsc(temaId).stream()
                 .map(ComentarioResponse::desde)
                 .toList();
     }
@@ -166,6 +171,80 @@ public class TemaServiceImpl implements TemaService {
 
         comentarioRepository.delete(comentario);
         log.debug("Comentario {} eliminado por {}", comentarioId, solicitante.nombreUsuario());
+    }
+
+    @Override
+    @Transactional
+    public ModeracionResponse moderarTema(Long temaId, ModeracionRequest orden, UsuarioAutenticado moderador) {
+        Tema tema = buscarTemaOFallar(temaId);
+        if (Boolean.TRUE.equals(orden.baneado())) {
+            tema.banear(exigirMotivo(orden));
+        } else {
+            tema.restituir();
+        }
+        temaRepository.save(tema);
+        log.info("Tema {} {} por {}", temaId, tema.isBaneado() ? "baneado" : "restituido",
+                moderador.nombreUsuario());
+        return aModeracion(tema);
+    }
+
+    @Override
+    @Transactional
+    public ModeracionResponse moderarComentario(Long comentarioId, ModeracionRequest orden,
+                                                UsuarioAutenticado moderador) {
+        Comentario comentario = comentarioRepository.findById(comentarioId)
+                .orElseThrow(() -> new ComentarioNoEncontradoException(comentarioId));
+        if (Boolean.TRUE.equals(orden.baneado())) {
+            comentario.banear(exigirMotivo(orden));
+        } else {
+            comentario.restituir();
+        }
+        comentarioRepository.save(comentario);
+        log.info("Comentario {} {} por {}", comentarioId,
+                comentario.isBaneado() ? "baneado" : "restituido", moderador.nombreUsuario());
+        return aModeracion(comentario);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ModeracionResponse> listarContenidoBaneado() {
+        List<ModeracionResponse> baneados = new ArrayList<>();
+        temaRepository.findByBaneadoTrueOrderByFechaCreacionDesc()
+                .forEach(tema -> baneados.add(aModeracion(tema)));
+        comentarioRepository.findByBaneadoTrueOrderByFechaCreacionDesc()
+                .forEach(comentario -> baneados.add(aModeracion(comentario)));
+        return baneados;
+    }
+
+    private String exigirMotivo(ModeracionRequest orden) {
+        if (orden.motivo() == null || orden.motivo().isBlank()) {
+            throw new DatosInvalidosException("El motivo es obligatorio para banear un contenido");
+        }
+        return orden.motivo().trim();
+    }
+
+    private ModeracionResponse aModeracion(Tema tema) {
+        return new ModeracionResponse("TEMA", tema.getId(), tema.getTitulo(), tema.getAutorId(),
+                tema.getAutorNombre(), tema.isBaneado(), tema.getMotivoBaneo());
+    }
+
+    private ModeracionResponse aModeracion(Comentario comentario) {
+        String extracto = comentario.getContenido().length() > 80
+                ? comentario.getContenido().substring(0, 77) + "..."
+                : comentario.getContenido();
+        return new ModeracionResponse("COMENTARIO", comentario.getId(), extracto,
+                comentario.getAutorId(), comentario.getAutorNombre(),
+                comentario.isBaneado(), comentario.getMotivoBaneo());
+    }
+
+    /** Como buscarTemaOFallar, pero un tema baneado se trata como no disponible (410). */
+    private Tema buscarTemaVisibleOFallar(Long id) {
+        Tema tema = buscarTemaOFallar(id);
+        if (tema.isBaneado()) {
+            throw new ContenidoModeradoException("El tema " + id
+                    + " fue retirado por moderacion: " + tema.getMotivoBaneo());
+        }
+        return tema;
     }
 
     private Tema buscarTemaOFallar(Long id) {

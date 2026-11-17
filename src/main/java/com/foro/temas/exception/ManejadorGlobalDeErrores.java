@@ -55,6 +55,16 @@ public class ManejadorGlobalDeErrores {
         return detalle(HttpStatus.CONFLICT, "Tema cerrado", ex.getMessage());
     }
 
+    @ExceptionHandler(ContenidoModeradoException.class)
+    public ProblemDetail manejarContenidoModerado(ContenidoModeradoException ex) {
+        return detalle(HttpStatus.GONE, "Contenido moderado", ex.getMessage());
+    }
+
+    @ExceptionHandler(DatosInvalidosException.class)
+    public ProblemDetail manejarDatosInvalidos(DatosInvalidosException ex) {
+        return detalle(HttpStatus.BAD_REQUEST, "Datos invalidos", ex.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail manejarValidacion(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new LinkedHashMap<>();
