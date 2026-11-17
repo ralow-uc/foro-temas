@@ -1,6 +1,7 @@
 package com.foro.temas.security;
 
 import jakarta.servlet.DispatcherType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,6 +17,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -32,9 +34,13 @@ import java.util.List;
 public class ConfiguracionDeSeguridad {
 
     private final FiltroDeAutenticacionJwt filtroJwt;
+    private final List<String> origenesPermitidos;
 
-    public ConfiguracionDeSeguridad(FiltroDeAutenticacionJwt filtroJwt) {
+    public ConfiguracionDeSeguridad(FiltroDeAutenticacionJwt filtroJwt,
+                                    @Value("${foro.cors.origenes}") String origenes) {
         this.filtroJwt = filtroJwt;
+        this.origenesPermitidos = Arrays.stream(origenes.split(","))
+                .map(String::trim).filter(o -> !o.isEmpty()).toList();
     }
 
     @Bean
@@ -72,7 +78,7 @@ public class ConfiguracionDeSeguridad {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuracion = new CorsConfiguration();
-        configuracion.setAllowedOriginPatterns(List.of("http://localhost:*"));
+        configuracion.setAllowedOriginPatterns(origenesPermitidos);
         configuracion.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuracion.setAllowedHeaders(List.of("*"));
 
