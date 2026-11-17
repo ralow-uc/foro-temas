@@ -1,0 +1,16 @@
+target/
+.git/
+.github/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+docs/
+postman/
+# Nunca dentro de la imagen: se monta al ejecutar
+wallet/
+Wallet*/
+*.sso
+*.p12
+*.jks
+.env
