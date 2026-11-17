@@ -4,11 +4,15 @@ import com.foro.temas.dto.CategoriaRequest;
 import com.foro.temas.dto.CategoriaResponse;
 import com.foro.temas.dto.ComentarioRequest;
 import com.foro.temas.dto.ComentarioResponse;
+import com.foro.temas.dto.ModeracionRequest;
+import com.foro.temas.dto.ModeracionResponse;
 import com.foro.temas.dto.PaginaResponse;
 import com.foro.temas.dto.TemaDetalleResponse;
 import com.foro.temas.dto.TemaRequest;
 import com.foro.temas.dto.TemaResponse;
 import com.foro.temas.exception.CategoriaNoEncontradaException;
+import com.foro.temas.exception.ContenidoModeradoException;
+import com.foro.temas.exception.DatosInvalidosException;
 import com.foro.temas.exception.DatosDuplicadosException;
 import com.foro.temas.exception.OperacionNoPermitidaException;
 import com.foro.temas.exception.TemaNoEncontradoException;
@@ -40,6 +44,8 @@ class ForoServiceImplTest {
             new UsuarioAutenticado(1L, "feliks", List.of("USUARIO"));
     private static final UsuarioAutenticado YIHENG =
             new UsuarioAutenticado(2L, "yiheng", List.of("USUARIO"));
+    private static final UsuarioAutenticado MODERADORA =
+            new UsuarioAutenticado(5L, "moderadora", List.of("MODERADOR", "USUARIO"));
     private static final UsuarioAutenticado ADMIN =
             new UsuarioAutenticado(9L, "admin", List.of("ADMIN"));
 
@@ -266,5 +272,70 @@ class ForoServiceImplTest {
         temaService.eliminarComentario(idDeAdmin, ADMIN);
 
         assertThat(temaService.listarComentarios(idTema)).isEmpty();
+    }
+
+    // ---------------------------------------------------------------- moderacion
+
+    @Test
+    @DisplayName("Moderacion: un tema baneado desaparece de la busqueda y su detalle responde 410")
+    void temaBaneadoDejaDeSerVisible() {
+        Long visible = publicarTema(FELIKS, "Mi primer sub-20");
+        Long spam = publicarTema(YIHENG, "Compra cubos baratos aqui");
+
+        ModeracionResponse resultado = temaService.moderarTema(
+                spam, new ModeracionRequest(true, "Spam: publicidad externa"), MODERADORA);
+
+        assertThat(resultado.baneado()).isTrue();
+        assertThat(resultado.tipo()).isEqualTo("TEMA");
+        assertThat(resultado.autorNombre()).isEqualTo("yiheng");
+
+        PaginaResponse<TemaResponse> pagina = temaService.buscar(null, null, null, 0, 10);
+        assertThat(pagina.contenido()).extracting(TemaResponse::id).containsExactly(visible);
+        assertThat(categoriaService.listar().get(0).cantidadDeTemas()).isEqualTo(1);
+
+        assertThatThrownBy(() -> temaService.obtenerPorId(spam))
+                .isInstanceOf(ContenidoModeradoException.class)
+                .hasMessageContaining("Spam");
+        assertThatThrownBy(() -> temaService.comentar(spam, new ComentarioRequest("Hola"), FELIKS))
+                .isInstanceOf(ContenidoModeradoException.class);
+    }
+
+    @Test
+    @DisplayName("Moderacion: restituir un tema lo vuelve a mostrar y limpia el motivo")
+    void restituirTema() {
+        Long id = publicarTema(FELIKS, "Mi primer sub-20");
+        temaService.moderarTema(id, new ModeracionRequest(true, "Revision"), MODERADORA);
+
+        ModeracionResponse resultado = temaService.moderarTema(id, new ModeracionRequest(false, null), ADMIN);
+
+        assertThat(resultado.baneado()).isFalse();
+        assertThat(resultado.motivo()).isNull();
+        assertThat(temaService.obtenerPorId(id).titulo()).isEqualTo("Mi primer sub-20");
+    }
+
+    @Test
+    @DisplayName("Moderacion: un comentario baneado no aparece en el tema ni en el conteo")
+    void comentarioBaneadoSeOculta() {
+        Long idTema = publicarTema(FELIKS, "Mi primer sub-20");
+        temaService.comentar(idTema, new ComentarioRequest("Felicitaciones."), YIHENG);
+        Long ofensivo = temaService.comentar(idTema, new ComentarioRequest("Comentario ofensivo."), YIHENG).id();
+
+        temaService.moderarComentario(ofensivo, new ModeracionRequest(true, "Lenguaje ofensivo"), MODERADORA);
+
+        assertThat(temaService.listarComentarios(idTema)).hasSize(1);
+        assertThat(temaService.buscar(null, null, null, 0, 10).contenido().get(0).cantidadDeComentarios())
+                .isEqualTo(1);
+        assertThat(temaService.listarContenidoBaneado())
+                .extracting(ModeracionResponse::id).containsExactly(ofensivo);
+    }
+
+    @Test
+    @DisplayName("Moderacion: banear sin motivo es un error de datos")
+    void banearSinMotivoFalla() {
+        Long id = publicarTema(FELIKS, "Mi primer sub-20");
+        assertThatThrownBy(() -> temaService.moderarTema(id, new ModeracionRequest(true, "  "), MODERADORA))
+                .isInstanceOf(DatosInvalidosException.class);
+        assertThatThrownBy(() -> temaService.moderarTema(999_999L, new ModeracionRequest(true, "x"), MODERADORA))
+                .isInstanceOf(TemaNoEncontradoException.class);
     }
 }

@@ -11,9 +11,15 @@ import java.util.List;
 public record UsuarioAutenticado(Long id, String nombreUsuario, List<String> roles) {
 
     public static final String ROL_ADMIN = "ADMIN";
+    public static final String ROL_MODERADOR = "MODERADOR";
 
     /** Un ADMIN puede intervenir sobre contenido ajeno. */
     public boolean esAdmin() {
         return roles != null && roles.contains(ROL_ADMIN);
+    }
+
+    /** Un MODERADOR o un ADMIN pueden banear y restituir contenido. */
+    public boolean puedeModerar() {
+        return esAdmin() || (roles != null && roles.contains(ROL_MODERADOR));
     }
 }

@@ -2,6 +2,8 @@ package com.foro.temas.service;
 
 import com.foro.temas.dto.ComentarioRequest;
 import com.foro.temas.dto.ComentarioResponse;
+import com.foro.temas.dto.ModeracionRequest;
+import com.foro.temas.dto.ModeracionResponse;
 import com.foro.temas.dto.PaginaResponse;
 import com.foro.temas.dto.TemaDetalleResponse;
 import com.foro.temas.dto.TemaRequest;
@@ -43,4 +45,14 @@ public interface TemaService {
 
     /** Elimina un comentario. Solo su autor o un ADMIN. */
     void eliminarComentario(Long comentarioId, UsuarioAutenticado solicitante);
+
+    /** Banea o restituye un tema. Solo MODERADOR o ADMIN (lo exige el controlador). */
+    ModeracionResponse moderarTema(Long temaId, ModeracionRequest orden, UsuarioAutenticado moderador);
+
+    /** Banea o restituye un comentario. Solo MODERADOR o ADMIN. */
+    ModeracionResponse moderarComentario(Long comentarioId, ModeracionRequest orden,
+                                         UsuarioAutenticado moderador);
+
+    /** Lista el contenido actualmente baneado (temas y comentarios). */
+    List<ModeracionResponse> listarContenidoBaneado();
 }

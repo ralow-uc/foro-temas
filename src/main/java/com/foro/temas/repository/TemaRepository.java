@@ -23,6 +23,8 @@ public interface TemaRepository extends JpaRepository<Tema, Long> {
     /**
      * Busqueda de temas con tres filtros opcionales y paginacion.
      *
+     * Los temas baneados por moderacion nunca aparecen en la busqueda publica.
+     *
      * Cada condicion se desactiva sola cuando su parametro llega nulo, de modo
      * que una unica consulta cubre las ocho combinaciones posibles de filtros
      * sin multiplicar los metodos del repositorio.
@@ -43,7 +45,8 @@ public interface TemaRepository extends JpaRepository<Tema, Long> {
      */
     @Query("""
             SELECT t FROM Tema t
-            WHERE (:categoriaId IS NULL OR t.categoria.id = :categoriaId)
+            WHERE t.baneado = false
+              AND (:categoriaId IS NULL OR t.categoria.id = :categoriaId)
               AND (CAST(:texto AS String) IS NULL
                    OR UPPER(t.titulo) LIKE UPPER(CONCAT('%', :texto, '%')) ESCAPE '\\')
               AND (CAST(:autor AS String) IS NULL
@@ -54,14 +57,21 @@ public interface TemaRepository extends JpaRepository<Tema, Long> {
                       @Param("autor") String autor,
                       Pageable paginacion);
 
-    /** Cuenta los temas de cada categoria en una sola consulta agrupada. */
+    /** Cuenta los temas visibles (no baneados) de cada categoria en una sola consulta agrupada. */
     @Query("""
             SELECT t.categoria.id AS categoriaId, COUNT(t) AS cantidad
             FROM Tema t
+            WHERE t.baneado = false
             GROUP BY t.categoria.id
             """)
     List<ConteoPorCategoria> contarTemasPorCategoria();
 
     /** Cuantos temas hay en una categoria. Se usa para no borrar categorias con contenido. */
     long countByCategoriaId(Long categoriaId);
+
+    /** Cuantos temas visibles (no baneados) hay en una categoria. */
+    long countByCategoriaIdAndBaneadoFalse(Long categoriaId);
+
+    /** Temas retirados por moderacion, del mas reciente al mas antiguo. */
+    List<Tema> findByBaneadoTrueOrderByFechaCreacionDesc();
 }
