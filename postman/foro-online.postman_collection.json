@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Foro en Linea CuboClub - 3 microservicios (S5)",
-    "description": "Coleccion de demostracion de los TRES microservicios del Sistema de Foros en Linea, ordenada para correrse de principio a fin con Run collection sin editar nada.\n\n  00-24  foro-usuarios + foro-temas (Experiencia 1, Semana 2)\n  25-58  foro-moderacion (Experiencia 2, Semana 5): normas, reportes, sanciones y su efecto en foro-temas\n\nVariables de URL: urlUsuarios, urlForo y urlModeracion. Para la nube (Docker) importa el entorno postman/foro-docker-cloud.postman_environment.json y reemplaza las tres URL por las publicas de Play with Docker.\n\nEs el mismo archivo en los tres repositorios.",
+    "description": "Coleccion de demostracion de los TRES microservicios del Sistema de Foros en Linea, ordenada para correrse de principio a fin con Run collection sin editar nada.\n\n  00-24  foro-usuarios + foro-temas (Experiencia 1, Semana 2)\n  25-58  foro-moderacion (Experiencia 2, Semana 5): normas, reportes, sanciones y su efecto en foro-temas\n\nVariables de URL: urlUsuarios, urlForo y urlModeracion. Para la nube importa el entorno postman/foro-render.postman_environment.json: ya trae las URL publicas de los servicios en Render (https://foro-usuarios.onrender.com, https://foro-temas.onrender.com, https://foro-moderacion.onrender.com).\n\nEs el mismo archivo en los tres repositorios.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
